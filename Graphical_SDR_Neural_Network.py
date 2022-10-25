@@ -2,9 +2,43 @@ import Multilayer_Perceptron
 from Multilayer_Perceptron import MultiLayerPerceptron
 import tkinter as tk
 import numpy as np
- 
-sdrnn = MultiLayerPerceptron(layers=[7,7,10])  # MLP
+samplesFileName = 'SDR_Sample_Data.txt' 
 tepochs = 0
+
+file = open(samplesFileName, 'r')
+sdrnn = MultiLayerPerceptron(layers=[7,7,10])  # MLP
+
+#read in network (neuron distribution per layer) from first line of sample data
+#each subsequent line represents a pair of training inputs and outputs
+network = [int(y) for y in np.array([np.array(x) for x in file.readline().strip().split(',')],dtype=object)]
+sdrnn = MultiLayerPerceptron(layers=network)
+
+
+
+print("Preset distribution of neurons in each network layer:",network,"\n")
+
+#Read training data inputs and outputs
+numSets = 0 #Training set counter
+t_inputs = [] #Program training data inputs
+t_outputs = [] #Expected training data outputs
+
+
+
+#read in training data, as well as bin labels
+while True:
+    line = file.readline()
+    if not line:
+        break
+    pair = line.strip().split(' ')
+
+    #Add each training data set
+    t_inputs.append([int(x) for x in pair[0].split(',')])
+    t_outputs.append([int(x) for x in pair[1].split(',')])
+ 
+    numSets += 1
+
+t_outputs = np.array([np.array(x) for x in t_outputs],dtype=object)
+t_inputs = np.array([np.array(x) for x in t_inputs],dtype=object)
 
 def update_a(event):
     r = int(slider_a.get() * (255 - offset)) + offset
@@ -68,19 +102,14 @@ def default_btn(event):
 def train_callback():
     global tepochs
     epochs = int(entry_epochs.get())
+    numSets = len(t_inputs)
+    
     for i in range(epochs):
         MSE = 0.0
-        MSE += sdrnn.bp([1,1,1,1,1,1,0],[1,0,0,0,0,0,0,0,0,0])    #0 pattern
-        MSE += sdrnn.bp([0,1,1,0,0,0,0],[0,1,0,0,0,0,0,0,0,0])    #1 pattern
-        MSE += sdrnn.bp([1,1,0,1,1,0,1],[0,0,1,0,0,0,0,0,0,0])    #2 pattern
-        MSE += sdrnn.bp([1,1,1,1,0,0,1],[0,0,0,1,0,0,0,0,0,0])    #3 pattern
-        MSE += sdrnn.bp([0,1,1,0,0,1,1],[0,0,0,0,1,0,0,0,0,0])    #4 pattern
-        MSE += sdrnn.bp([1,0,1,1,0,1,1],[0,0,0,0,0,1,0,0,0,0])    #5 pattern
-        MSE += sdrnn.bp([1,0,1,1,1,1,1],[0,0,0,0,0,0,1,0,0,0])    #6 pattern
-        MSE += sdrnn.bp([1,1,1,0,0,0,0],[0,0,0,0,0,0,0,1,0,0])    #7 pattern
-        MSE += sdrnn.bp([1,1,1,1,1,1,1],[0,0,0,0,0,0,0,0,1,0])    #8 pattern
-        MSE += sdrnn.bp([1,1,1,1,0,1,1],[0,0,0,0,0,0,0,0,0,1])    #9 pattern
-    lbl_err.configure(text="{0:.10f}".format(MSE/10.0))
+        for j in range(numSets):
+             MSE += sdrnn.bp(t_inputs[j],t_outputs[j])    
+       
+    lbl_err.configure(text="{0:.10f}".format(MSE/numSets))
     tepochs += epochs
     lbl_tepochs.configure(text = tepochs)
     run_ann()        
